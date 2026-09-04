@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>U18 R1 · Suivi RPE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --ink:#0D1526;
+    --panel:#141F35;
+    --panel-2:#1B2A47;
+    --line:rgba(255,255,255,0.08);
+    --text:#EDF1F7;
+    --muted:#8FA0BC;
+    --amber:#F2A93B;
+    --amber-dark:#C7861F;
+    --green:#3FA66B;
+    --red:#D9463C;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  #rpe-root{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--ink);
+    color:var(--text);
+    min-height:100vh;
+    padding:0 0 48px 0;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:0 18px;}
+  .topbar{
+    padding:22px 18px 16px 18px;
+    max-width:520px;margin:0 auto;
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .eyebrow-row{display:flex;align-items:baseline;justify-content:space-between;}
+  .club{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.3px;
+  }
+  .club span{color:var(--amber);}
+  .subtitle{color:var(--muted);font-size:13px;margin-top:2px;}
+
+  .segmented{
+    display:flex;background:var(--panel);border-radius:12px;padding:4px;margin:16px 18px 6px 18px;
+    max-width:520px; box-sizing:border-box;
+  }
+  .seg-btn{
+    flex:1;border:none;background:transparent;color:var(--muted);
+    font-family:'Inter';font-weight:600;font-size:14px;padding:10px 0;border-radius:9px;
+    cursor:pointer;transition:background .18s ease, color .18s ease;
+  }
+  .seg-btn.active{background:var(--amber);color:#1a1206;}
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:20px;margin-top:16px;
+  }
+  .field-label{
+    font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:600;
+  }
+  select, input[type="date"], input[type="password"]{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    padding:13px 14px;border-radius:10px;font-size:16px;font-family:'Inter';
+    appearance:none;-webkit-appearance:none;
+  }
+  select:focus, input:focus{outline:2px solid var(--amber);outline-offset:1px;}
+
+  .rpe-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px;
+  }
+  .rpe-btn{
+    aspect-ratio:1/1;border-radius:12px;border:2px solid transparent;
+    font-family:'Oswald';font-size:20px;font-weight:600;color:#0c0f16;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:transform .1s ease, border-color .12s ease;
+  }
+  .rpe-btn:active{transform:scale(0.93);}
+  .rpe-btn.selected{border-color:#fff;box-shadow:0 0 0 2px var(--ink), 0 0 0 4px #fff;}
+  .rpe-scale-caption{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:8px;}
+
+  .submit-btn{
+    width:100%;margin-top:18px;padding:15px;border:none;border-radius:12px;
+    background:var(--amber);color:#1a1206;font-family:'Oswald';font-weight:700;
+    font-size:16px;letter-spacing:0.3px;cursor:pointer;
+  }
+  .submit-btn:disabled{background:#3a3f4c;color:#7c8494;cursor:not-allowed;}
+  .submit-btn:active:not(:disabled){transform:translateY(1px);}
+
+  .confirm-banner{
+    display:none;margin-top:14px;padding:12px 14px;border-radius:10px;
+    background:rgba(63,166,107,0.15);border:1px solid rgba(63,166,107,0.4);
+    color:#8CE0AC;font-size:14px;font-weight:600;text-align:center;
+  }
+  .confirm-banner.show{display:block;}
+
+  /* Coach view */
+  .coach-header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:16px;}
+  .coach-title{font-family:'Oswald';font-size:16px;font-weight:600;}
+  .icon-btn{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    padding:8px 12px;border-radius:9px;font-size:12.5px;font-family:'Inter';font-weight:600;cursor:pointer;white-space:nowrap;
+  }
+  .table-scroll{overflow-x:auto;margin-top:12px;border-radius:12px;border:1px solid var(--line);}
+  table.rpe-table{border-collapse:collapse;width:100%;font-size:13px;}
+  table.rpe-table th, table.rpe-table td{
+    padding:9px 10px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  table.rpe-table th{background:var(--panel-2);color:var(--muted);font-weight:600;font-size:11px;}
+  table.rpe-table td:first-child, table.rpe-table th:first-child{
+    position:sticky;left:0;background:var(--panel);text-align:left;font-weight:500;z-index:2;
+    box-shadow:2px 0 0 var(--line);
+  }
+  table.rpe-table th:first-child{background:var(--panel-2);}
+  .rpe-cell{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:26px;height:26px;border-radius:7px;font-weight:700;color:#0c0f16;font-size:12px;
+    cursor:pointer;
+  }
+  .rpe-cell.empty{background:transparent;color:var(--muted);font-weight:400;width:auto;cursor:default;}
+
+  .share-box{margin-top:16px;text-align:center;}
+  .share-box img{border-radius:12px;background:#fff;padding:10px;}
+  .link-row{
+    display:flex;gap:8px;margin-top:12px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px;align-items:center;
+  }
+  .link-row input{border:none;background:transparent;color:var(--muted);font-size:12px;flex:1;padding:4px;}
+  .link-row button{background:var(--amber);border:none;color:#1a1206;font-weight:700;font-size:12px;
+    padding:7px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;}
+
+  .empty-state{color:var(--muted);font-size:13px;text-align:center;padding:24px 10px;}
+
+  .loading{color:var(--muted);font-size:13px;text-align:center;padding:40px 10px;}
+
+  .setup-banner{
+    background:rgba(242,169,59,0.12);border:1px solid rgba(242,169,59,0.4);color:#F2C97D;
+    padding:12px 14px;border-radius:10px;font-size:12.5px;margin:16px 18px 0 18px;line-height:1.5;
+  }
+  .setup-banner code{background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:5px;}
+
+  /* edit modal */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;width:100%;max-width:340px;}
+  .modal h3{font-family:'Oswald';margin:0 0 4px 0;font-size:16px;}
+  .modal p{color:var(--muted);font-size:13px;margin:0 0 14px 0;}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;}
+  .modal-actions button{flex:1;padding:10px;border-radius:9px;border:none;font-weight:600;font-size:13px;cursor:pointer;}
+  .btn-cancel{background:var(--panel-2);color:var(--text);}
+  .btn-delete{background:rgba(217,70,60,0.18);color:#F29089;}
+</style>
+</head>
+<body>
+
+<div id="rpe-root">
+  <div class="topbar">
+    <div class="eyebrow-row">
+      <div class="club">U18 R1 <span>·</span> Suivi RPE</div>
+    </div>
+    <div class="subtitle">Note ta charge ressentie apres chaque seance ou match</div>
+  </div>
+
+  <div id="setup-banner" class="setup-banner" style="display:none;">
+    ⚠️ Configuration requise : ouvre <code>index.html</code> et remplace <code>APPS_SCRIPT_URL</code> en haut du script par l'URL de ton Google Apps Script deploye.
+  </div>
+
+  <div class="segmented">
+    <button class="seg-btn active" data-view="joueur">Joueur</button>
+    <button class="seg-btn" data-view="coach">Coach</button>
+  </div>
+
+  <div class="wrap" id="view-joueur">
+    <div class="card">
+      <div class="field-label">Ton nom</div>
+      <select id="player-select"></select>
+
+      <div class="field-label" style="margin-top:16px;">Date de la seance</div>
+      <input type="date" id="date-input">
+
+      <div class="field-label" style="margin-top:16px;">Ton RPE (effort ressenti)</div>
+      <div class="rpe-grid" id="rpe-grid"></div>
+      <div class="rpe-scale-caption"><span>0 · repos</span><span>10 · effort maximal</span></div>
+
+      <button class="submit-btn" id="submit-btn" disabled>Valider mon RPE</button>
+      <div class="confirm-banner" id="confirm-banner">RPE enregistre ✓</div>
+    </div>
+  </div>
+
+  <div class="wrap" id="view-coach" style="display:none;">
+    <div class="card">
+      <div class="coach-header">
+        <div class="coach-title">Tableau des saisies</div>
+        <div style="display:flex;gap:8px;">
+          <button class="icon-btn" id="copy-btn">Copier pour Excel</button>
+          <button class="icon-btn" id="csv-btn">Telecharger CSV</button>
+        </div>
+      </div>
+      <div id="coach-table-wrap"><div class="loading">Chargement...</div></div>
+    </div>
+
+    <div class="card share-box">
+      <div class="field-label" style="text-align:left;">QR code d'acces joueurs</div>
+      <div id="qr-holder"></div>
+      <div class="link-row">
+        <input type="text" id="share-link" readonly>
+        <button id="copy-link-btn">Copier</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <h3 id="modal-title">Modifier la saisie</h3>
+      <p id="modal-sub"></p>
+      <div class="rpe-grid" id="modal-rpe-grid"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="modal-cancel">Annuler</button>
+        <button class="btn-delete" id="modal-delete">Effacer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const PLAYERS = ["Maxime DELOBEL","Augustin BRUYERE","Ibrahim BARRY","Louka FRANCOIS","Raphael BADUNBELE","Gabriel LUYEYE","Jules ACHIBA","Nolan CHANG","Taylor MBISSI","Axel LECLERCQ","Enzo MANENO","Hugo ACHIBA","Chriss MBADINGA","Clement COUGNENC","Arthur COURBO","Eymen CAVDARLI","Matthieu FLAMEZ","Yohann KOUAME","Jordan RAMADE","Rayan SADOUNE","Thomas DE CAESTECKER","Luka OLIVEIRA","Morgan BASTO","Hamza MEGRI","Younes HSSIKOUR","Gabriel DUBOIS"];
+
+  // ==========================================================
+  // ETAPE OBLIGATOIRE : colle ici l'URL de ton Google Apps Script
+  // deploye (celle qui se termine par /exec).
+  // ==========================================================
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-FgdPKX4RAs5MRog1KlU4fAj2VLCoYvp0TkS4hYP_zt1ke2j1j2JawBBo2nKCFuCP/exec";
+
+  let dataCache = {}; // { "YYYY-MM-DD": { "Player Name": rpeValue } }
+  let selectedRpe = null;
+  let modalCtx = null; // {date, player}
+
+  const isConfigured = APPS_SCRIPT_URL && APPS_SCRIPT_URL.indexOf("PASTE_YOUR") !== 0;
+  if(!isConfigured){
+    document.getElementById('setup-banner').style.display = 'block';
+  }
+
+  function rpeColor(v){
+    const stops = [
+      [0,[63,166,107]],
+      [5,[242,169,59]],
+      [10,[217,70,60]]
+    ];
+    let lo = stops[0], hi = stops[stops.length-1];
+    for(let i=0;i<stops.length-1;i++){
+      if(v>=stops[i][0] && v<=stops[i+1][0]){ lo=stops[i]; hi=stops[i+1]; break; }
+    }
+    const range = hi[0]-lo[0] || 1;
+    const t = (v-lo[0])/range;
+    const c = lo[1].map((c0,i)=>Math.round(c0 + (hi[1][i]-c0)*t));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
+  function todayIso(){
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off*60000);
+    return local.toISOString().slice(0,10);
+  }
+
+  function fmtDateShort(iso){
+    const [y,m,d] = iso.split("-");
+    return `${d}/${m}`;
+  }
+
+  // ---- Couche de sauvegarde : Google Sheets via Apps Script ----
+  async function loadData(){
+    if(!isConfigured){ dataCache = {}; return; }
+    try{
+      const res = await fetch(APPS_SCRIPT_URL, {method:'GET'});
+      dataCache = await res.json();
+    }catch(e){
+      console.error("Erreur de chargement", e);
+      dataCache = {};
+    }
+  }
+
+  async function postEntry(date, player, rpe){
+    if(!isConfigured) return false;
+    try{
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'text/plain;charset=utf-8'}, // evite le preflight CORS
+        body: JSON.stringify({action:'set', date, player, rpe})
+      });
+      return true;
+    }catch(e){
+      console.error("Erreur d'enregistrement", e);
+      return false;
+    }
+  }
+
+  async function deleteEntry(date, player){
+    if(!isConfigured) return false;
+    try{
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({action:'delete', date, player})
+      });
+      return true;
+    }catch(e){
+      console.error("Erreur de suppression", e);
+      return false;
+    }
+  }
+
+  function buildPlayerSelect(){
+    const sel = document.getElementById('player-select');
+    sel.innerHTML = '<option value="" disabled selected>Choisis ton nom</option>' +
+      PLAYERS.map(p=>`<option value="${p}">${p}</option>`).join('');
+  }
+
+  function buildRpeGrid(container, onPick, activeVal){
+    container.innerHTML = '';
+    for(let i=0;i<=10;i++){
+      const btn = document.createElement('button');
+      btn.className = 'rpe-btn' + (activeVal===i ? ' selected':'');
+      btn.type = 'button';
+      btn.textContent = i;
+      btn.style.background = rpeColor(i);
+      btn.addEventListener('click', ()=>onPick(i, btn, container));
+      container.appendChild(btn);
+    }
+  }
+
+  function checkFormReady(){
+    const player = document.getElementById('player-select').value;
+    const date = document.getElementById('date-input').value;
+    document.getElementById('submit-btn').disabled = !(player && date && selectedRpe !== null);
+  }
+
+  function initEntryForm(){
+    buildPlayerSelect();
+    document.getElementById('date-input').value = todayIso();
+    document.getElementById('date-input').max = todayIso();
+
+    buildRpeGrid(document.getElementById('rpe-grid'), (val, btn, container)=>{
+      selectedRpe = val;
+      [...container.children].forEach(c=>c.classList.remove('selected'));
+      btn.classList.add('selected');
+      checkFormReady();
+    }, null);
+
+    document.getElementById('player-select').addEventListener('change', checkFormReady);
+    document.getElementById('date-input').addEventListener('change', checkFormReady);
+
+    document.getElementById('submit-btn').addEventListener('click', async ()=>{
+      const player = document.getElementById('player-select').value;
+      const date = document.getElementById('date-input').value;
+      if(!player || !date || selectedRpe===null) return;
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Enregistrement...';
+
+      const ok = await postEntry(date, player, selectedRpe);
+
+      btn.textContent = 'Valider mon RPE';
+      const banner = document.getElementById('confirm-banner');
+      if(ok){
+        banner.style.background = 'rgba(63,166,107,0.15)';
+        banner.style.borderColor = 'rgba(63,166,107,0.4)';
+        banner.style.color = '#8CE0AC';
+        banner.textContent = 'RPE enregistre ✓';
+        banner.classList.add('show');
+        selectedRpe = null;
+        buildRpeGrid(document.getElementById('rpe-grid'), (val, b, c)=>{
+          selectedRpe = val;
+          [...c.children].forEach(x=>x.classList.remove('selected'));
+          b.classList.add('selected');
+          checkFormReady();
+        }, null);
+        document.getElementById('player-select').selectedIndex = 0;
+        checkFormReady();
+        setTimeout(()=>banner.classList.remove('show'), 2600);
+      }else{
+        banner.textContent = isConfigured ? "Erreur, reessaie." : "Configuration manquante (voir bandeau en haut de page).";
+        banner.style.background = 'rgba(217,70,60,0.15)';
+        banner.style.borderColor = 'rgba(217,70,60,0.4)';
+        banner.style.color = '#F29089';
+        banner.classList.add('show');
+        checkFormReady();
+      }
+    });
+  }
+
+  async function renderCoachTable(){
+    const wrap = document.getElementById('coach-table-wrap');
+    wrap.innerHTML = '<div class="loading">Chargement...</div>';
+    await loadData();
+    const dates = Object.keys(dataCache).sort();
+    if(dates.length===0){
+      wrap.innerHTML = '<div class="empty-state">Aucune saisie pour le moment.<br>Les entrees des joueurs apparaitront ici.</div>';
+      return;
+    }
+    let html = '<div class="table-scroll"><table class="rpe-table"><thead><tr><th>Joueur</th>';
+    dates.forEach(d=> html += `<th>${fmtDateShort(d)}</th>`);
+    html += '</tr></thead><tbody>';
+    PLAYERS.forEach(p=>{
+      html += `<tr><td>${p}</td>`;
+      dates.forEach(d=>{
+        const v = dataCache[d] && dataCache[d][p] !== undefined ? dataCache[d][p] : null;
+        if(v===null){
+          html += `<td><span class="rpe-cell empty">—</span></td>`;
+        }else{
+          html += `<td><span class="rpe-cell" data-date="${d}" data-player="${p.replace(/"/g,'&quot;')}" style="background:${rpeColor(v)}">${v}</span></td>`;
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll('.rpe-cell:not(.empty)').forEach(cell=>{
+      cell.addEventListener('click', ()=>{
+        openModal(cell.dataset.date, cell.dataset.player);
+      });
+    });
+  }
+
+  function openModal(date, player){
+    modalCtx = {date, player};
+    document.getElementById('modal-sub').textContent = `${player} — ${fmtDateShort(date)}`;
+    const current = dataCache[date] ? dataCache[date][player] : undefined;
+    buildRpeGrid(document.getElementById('modal-rpe-grid'), async (val)=>{
+      await postEntry(modalCtx.date, modalCtx.player, val);
+      closeModal();
+      renderCoachTable();
+    }, current);
+    document.getElementById('modal-backdrop').classList.add('show');
+  }
+
+  function closeModal(){
+    document.getElementById('modal-backdrop').classList.remove('show');
+    modalCtx = null;
+  }
+
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-backdrop').addEventListener('click', (e)=>{
+    if(e.target.id==='modal-backdrop') closeModal();
+  });
+  document.getElementById('modal-delete').addEventListener('click', async ()=>{
+    if(modalCtx){
+      await deleteEntry(modalCtx.date, modalCtx.player);
+    }
+    closeModal();
+    renderCoachTable();
+  });
+
+  document.getElementById('copy-btn').addEventListener('click', async ()=>{
+    await loadData();
+    const dates = Object.keys(dataCache).sort();
+    let tsv = 'Joueur\t' + dates.map(fmtDateShort).join('\t') + '\n';
+    PLAYERS.forEach(p=>{
+      const row = [p];
+      dates.forEach(d=>{
+        const v = dataCache[d] && dataCache[d][p] !== undefined ? dataCache[d][p] : '';
+        row.push(v);
+      });
+      tsv += row.join('\t') + '\n';
+    });
+    try{
+      await navigator.clipboard.writeText(tsv);
+      const btn = document.getElementById('copy-btn');
+      const original = btn.textContent;
+      btn.textContent = 'Copie !';
+      setTimeout(()=>btn.textContent = original, 1800);
+    }catch(e){
+      alert("Impossible de copier automatiquement. Selectionne et copie le tableau manuellement.");
+    }
+  });
+
+  function csvEscape(val){
+    const s = String(val);
+    if(/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+    return s;
+  }
+
+  document.getElementById('csv-btn').addEventListener('click', async ()=>{
+    await loadData();
+    const dates = Object.keys(dataCache).sort();
+    let rows = [['Joueur', ...dates.map(fmtDateShort)]];
+    PLAYERS.forEach(p=>{
+      const row = [p];
+      dates.forEach(d=>{
+        const v = dataCache[d] && dataCache[d][p] !== undefined ? dataCache[d][p] : '';
+        row.push(v);
+      });
+      rows.push(row);
+    });
+    const csv = rows.map(r=>r.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob(["\uFEFF" + csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'suivi_rpe_' + todayIso() + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  function initShare(){
+    const url = window.location.href;
+    document.getElementById('share-link').value = url;
+    const holder = document.getElementById('qr-holder');
+    try{
+      if(window.QRCode){
+        holder.innerHTML = '';
+        new QRCode(holder, {
+          text: url,
+          width: 220,
+          height: 220,
+          colorDark: "#0D1526",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }else{
+        holder.innerHTML = '<div class="empty-state">QR code indisponible — utilise le lien ci-dessous.</div>';
+      }
+    }catch(e){
+      holder.innerHTML = '<div class="empty-state">QR code indisponible — utilise le lien ci-dessous.</div>';
+    }
+    document.getElementById('copy-link-btn').addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(url);
+        const b = document.getElementById('copy-link-btn');
+        const o = b.textContent; b.textContent='Copie';
+        setTimeout(()=>b.textContent=o, 1500);
+      }catch(e){}
+    });
+  }
+
+  document.querySelectorAll('.seg-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const view = btn.dataset.view;
+      document.getElementById('view-joueur').style.display = view==='joueur' ? '' : 'none';
+      document.getElementById('view-coach').style.display = view==='coach' ? '' : 'none';
+      if(view==='coach') renderCoachTable();
+    });
+  });
+
+  initEntryForm();
+  initShare();
+})();
+</script>
+</body>
+</html>
